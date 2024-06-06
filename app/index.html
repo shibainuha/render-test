@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Frontend Server</title>
+  </head>
+  <body>
+    <section>
+      <h1>Login page</h1>
+      <input type="email" id="email" placeholder="Type your message here" />
+      <input
+        type="password"
+        id="password"
+        placeholder="Type your message here"
+      />
+      <button onclick="login()">Send</button>
+    </section>
+
+    <script>
+      function login() {
+        var email = document.getElementById('email').value;
+        var password = document.getElementById('password').value;
+
+        var data = {
+          email: email,
+          password: password,
+        };
+
+        fetch(`/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        })
+          .then((response) => {
+            if (response.status === 200) {
+              return response.json();
+            } else {
+              throw new Error('Login failed.');
+            }
+          })
+          .then((result) => {
+            localStorage.setItem('token', result.token);
+            window.location.href = '/admin';
+            console.log('success');
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+            console.log('fails');
+          });
+      }
+    </script>
+  </body>
+</html>

