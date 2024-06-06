@@ -1,4 +1,4 @@
-jwt
+PyJWT
 pytz
 flask_cors
 flask_socketio
