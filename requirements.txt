@@ -1,3 +1,4 @@
+jwt
 flask_cors
 flask_socketio
 gunicorn
